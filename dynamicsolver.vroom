@@ -1,0 +1,56 @@
+#!/usr/bin/env vroom-wrapper
+from vroom import *
+
+from dynamics import lorenz
+
+from scipy import integrate, arange
+import math
+
+def clear_points(button):
+   Global.positions = []
+   Global.colors = []
+   update()
+
+def solve():
+   Global.colors = [None] * len(Global.positions)
+   colormap = ColorMap('jet')
+   max_vel = 180.0
+
+   for i, pos in enumerate(Global.positions):
+      soln = integrate.odeint(lorenz, pos, [0.0, Global.step_size])
+      Global.positions[i] = soln[1]
+      
+      vel = lorenz(pos,None)
+      mag = math.sqrt(sum(map(lambda x: x[0]*x[1], zip(vel, vel))))
+      Global.colors[i] = colormap(mag, max_vel)
+
+def update():
+   Global.points = PointCloud(Global.positions, Global.colors)
+   Global.points.sprite(Global.texture)
+
+def init():
+   setMainMenuTitle('dynamics: dynamic solver')
+   addMainMenuItem('start/stop', lambda x: Global.running.toggle())
+   addMainMenuItem('clear', clear_points)
+
+   Global.running = BooleanOption()
+   Global.step_size = 0.005
+
+def gl_init():
+   Global.texture = get_resource('particle.bmp')
+   clear_points(None)
+
+@Global.require('running')
+def frame():
+   solve()
+   update()
+
+def display():
+   lighting(False)
+   print('drawing {} particles...'.format(len(Global.positions)))
+   Global.points.draw()
+
+def button_release(pos, button):
+   Global.positions.append(pos)
+   update()
+
