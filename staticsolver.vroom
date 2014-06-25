@@ -1,0 +1,78 @@
+#!/usr/bin/env vroom-wrapper
+#
+# This program implements a basic version of the "static solver tool" from 
+# flow. The user can interact with the program by clicking a point in space
+# to set the initial starting position.
+#
+
+from vroom import *
+
+# Dynamical systems are defined in the file dynamics.py. Feel free to add
+# additional systems or modify the parameters of existing systems.
+from dynamics import *
+
+
+def solve():
+   # Use the solver for the current dynamical system to generate an array
+   # of vertex values, then update the data in the vertex buffer object.
+   vertices = list(Global.solver.generator(Global.position, Global.steps))
+   Global.buffer.loadVertexData(vertices)
+
+def set_equation(button):
+   # Use the triggered button value to create a solver for that system.
+   Global.system = button.getName()
+   Global.solver = Solver(equations[Global.system])
+   # Generate a solution for the current system/starting position.
+   solve()
+
+
+# vroom callbacks
+
+def init():
+   # Set up the main menu.
+   setMainMenuTitle('dynamics: static solver')
+   # Add a button for each dynamical system. Assign the function `set_equation`
+   # as the callback for each button.
+   for eqn in equations.keys():
+      addMainMenuItem(eqn, set_equation)
+
+   # Set global parameter values
+   Global.position = [1.0, 1.0, 1.0] 
+   Global.system = 'lorenz'
+   Global.step_size = 0.01          
+   Global.steps = 5000
+
+   # Use a `ColorMap` object to create a color gradient.
+   colormap = ColorMap('gist_rainbow')
+   colors = [colormap(i, Global.steps) for i in range(Global.steps)]
+
+   # Initialize a vertex buffer object with the color data. Vertex data will
+   # be assigned/updated by the `solve` equation.
+   Global.buffer = Buffer(color_data=colors)
+   Global.buffer.renderMode('lines:strip')
+
+   # Solve the default system with the initial parameter values.
+   Global.solver = Solver(equations[Global.system])
+   solve()
+
+def gl_init():
+   # Initialize font rendering.
+   fontFile = get_resource('DroidSans.ttf')
+   textFont(fontFile)
+
+def display():
+   # Draw a grid for reference.
+   color(0.3)
+   draw(grid, 40, 40, 20, 20).at([-20, -20, 0])
+
+   # Draw the dynamical system solution.
+   Global.buffer.draw()
+   
+   # Display (x,y,z) values of the initial position.
+   color(1.0)
+   text('({:.2f}, {:.2f}, {:.2f})'.format(*Global.position), Global.position)
+
+def button_press(pos, button):
+   # Use the current cursor position as the stating position.
+   Global.position = pos
+   solve()
